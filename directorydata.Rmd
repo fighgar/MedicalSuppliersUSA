@@ -19,7 +19,7 @@ Data is released in 2019-03-08. If updated data is necessary, please use above w
 
 After data is downloaded, it is loaded using Rstudio program along with several packages.
 
-Please change the ROOT.DIR's directory information.
+Please change the ROOT.DIR's directory information if your data is in different location.
 
 
 ```{r setup, include=FALSE}
