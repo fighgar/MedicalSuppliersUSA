@@ -1,0 +1,120 @@
+---
+title: "Data Medical GIS"
+author: "Taejoo Chae"
+date: "2019년 3월 9일"
+output: html_document
+---
+
+# MEDICAL SUPPLIERS IN USA
+
+This code provides simple Geographic Information System(GIS) coded by R. 
+
+Data is downloaded from a federal government website managed by the U.S. Department of Health & Human Services
+200 Independence Avenue, S.W. - Washington, D.C. 20201, or HealthData.gov. The website's address is   <https://healthdata.gov/dataset/supplier-directory-data>.
+
+Data is released in 2019-03-08. If updated data is necessary, please use above website address.
+
+
+## Data & package preparation.
+
+After data is downloaded, it is loaded using Rstudio program along with several packages.
+
+Please change the ROOT.DIR's directory information.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+ROOT.DIR = "e:/ITMS2018/R/datamedical/"
+
+train = read.csv(file.path(ROOT.DIR, "Supplier_Directory_Data.csv"))
+train$Competitive.Bid.Service.Area.Name = NULL
+train[,1] = NULL
+head(train)
+
+
+library(ggmap)
+library(fiftystater)
+library(raster)
+library(rgeos)
+library(maptools)
+library(rgdal)
+
+```
+
+## Data inspection
+
+It is not important here, but I wanted to check if there are any NA(Not Applicable) values and unique values in this data. 
+
+Using na_val as NA locater, Zip.Plus.4 and Toll.Free.Telephone categories are having NAs. 
+
+Using unq_val as unique value finder, there are 56 states and 7344 cities in USA. Probably will use city information later, but this time, only state information will be used.
+
+```{r cars}
+
+category1 = data.frame(table(train$Product.Category.Name))
+category1 = category1[order(category1$Freq, decreasing = TRUE), ]
+
+
+str(train)
+
+na_val = sapply(train, function(x) sum(is.na(x)))
+#this is using function x which is sum(is.na(x))
+
+# count unique records per variable
+unq_val <- sapply(train, function(x) length(unique(x)))
+
+splittrain1 = split(train, train$State)
+#splittrain["AK"]
+
+splittrain2 = split(train, train$Product.Category.Name)
+
+```
+
+## Ranking by state
+
+From train data, number and rate of medical supplier by each state information are gathered. 
+
+```{r}
+maxmin = table(train$State)
+maxmin = data.frame(maxmin)
+
+ordermaxmin = maxmin[order(maxmin$Freq, decreasing = TRUE), ]
+ordermaxmin$rate = ordermaxmin$Freq/sum(ordermaxmin[,2])*100
+
+#write.csv(ordermaxmin, file = "stateinfo.csv", row.names=FALSE)
+
+```
+
+California has 49631 medical supliers, or medical stores, which is number 1 in USA. After CA, Texas and New York's number of medical stores are in 2nd and 3rd ranking.
+
+This data is exported as an csv file and edited.
+Please refer stateinfo.csv for further details.
+
+
+## Visualize data
+
+By using stateinfo.csv, frequency data is visualized.
+
+Rate and full name of each state is used.
+
+```{r pressure, echo=FALSE}
+ordermaxmin2 = read.csv(file.path(ROOT.DIR, "stateinfo.csv"))
+
+data("fifty_states")
+p1 = ggplot(ordermaxmin2, aes(map_id = state)) + 
+  
+  # map points to the fifty_states shape data
+  geom_map(aes(fill = rate), map = fifty_states) + 
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() +
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") +
+  theme(legend.position = "bottom", 
+        panel.background = element_blank())
+
+# add border boxes to AK/HI
+p1 + fifty_states_inset_boxes() 
+
+```
